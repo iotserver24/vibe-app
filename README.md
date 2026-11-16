@@ -28,7 +28,7 @@ git checkout vibe/mistral-bar-f418eb
 
 ## Configure
 
-Get an API key from [console.mistral.com](https://console.mistral.com), then either:
+Get an API key from [console.mistral.ai](https://console.mistral.ai), then either:
 
 - open the app → **Settings** → paste the API key, or
 - run `mistral-bar-config set api_key <YOUR_KEY>`

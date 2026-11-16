@@ -2,7 +2,7 @@ import json
 
 import requests
 
-API_URL = "https://api.mistral.com/v1/chat/completions"
+API_URL = "https://api.mistral.ai/v1/chat/completions"
 TIMEOUT = 120
 
 
