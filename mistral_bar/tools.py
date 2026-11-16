@@ -2,6 +2,33 @@ import json
 import os
 from pathlib import Path
 
+TOOL_DEFS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "list_dir",
+            "description": "List files and folders in a directory inside the working directory.",
+            "parameters": {
+                "type": "object",
+                "properties": {"path": {"type": "string", "description": "Relative or absolute path"}},
+                "required": ["path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_file",
+            "description": "Read a text file inside the working directory.",
+            "parameters": {
+                "type": "object",
+                "properties": {"path": {"type": "string", "description": "Relative or absolute path"}},
+                "required": ["path"],
+            },
+        },
+    },
+]
+
 IGNORED_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", ".tox", "dist", "build", ".mypy_cache"}
 TEXT_SUFFIXES = {
     ".txt", ".md", ".py", ".js", ".ts", ".tsx", ".jsx", ".json", ".yaml", ".yml",
