@@ -36,6 +36,9 @@ def extract_reply(message):
     if message.get("tool_calls"):
         return None
     content = message.get("content") or ""
+    if isinstance(content, list):
+        parts = [p.get("text", "") for p in content if isinstance(p, dict)]
+        content = "".join(parts)
     return content.strip()
 
 
