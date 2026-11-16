@@ -4,6 +4,7 @@ import queue
 import socket
 import sys
 import threading
+import traceback
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
@@ -431,3 +432,32 @@ def main():
             file=sys.stderr,
         )
     app.run()
+
+
+def main_with_logging():
+    try:
+        main()
+    except Exception:
+        from pathlib import Path
+
+        log = Path.home() / ".local/share/mistral-bar/error.log"
+        try:
+            log.parent.mkdir(parents=True, exist_ok=True)
+            with open(log, "a", encoding="utf-8") as f:
+                f.write(traceback.format_exc() + "\n")
+        except OSError:
+            pass
+        try:
+            import tkinter as tk
+            from tkinter import messagebox
+
+            r = tk.Tk(); r.withdraw()
+            messagebox.showerror("Mistral — startup error", traceback.format_exc()[-1500:])
+            r.destroy()
+        except Exception:
+            pass
+        raise
+
+
+if __name__ == "__main__":
+    main_with_logging()
