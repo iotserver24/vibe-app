@@ -53,13 +53,13 @@ class MistralApp:
 
         self.root = tk.Tk()
         self.root.title("Mistral")
-        self.root.geometry("1000x680")
         self.root.minsize(700, 480)
         self.root.configure(bg=COLORS["bg"])
         self.visible = True
 
         self._build_ui()
         self._bind_keys()
+        self._center_window(1000, 680)
 
         if self.conversations:
             self._select_conversation(self.conversations[0]["id"])
@@ -68,6 +68,21 @@ class MistralApp:
 
         self.root.protocol("WM_DELETE_WINDOW", self.hide)
         self.root.after(100, self._poll_events)
+        self.root.after(50, self._force_show)
+
+    def _center_window(self, w, h):
+        self.root.update_idletasks()
+        sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+        x, y = max(0, (sw - w) // 2), max(0, (sh - h) // 3)
+        self.root.geometry(f"{w}x{h}+{x}+{y}")
+
+    def _force_show(self):
+        self.root.deiconify()
+        self.root.lift()
+        self.root.attributes("-topmost", True)
+        self.root.focus_force()
+        self.input_widget.focus_set()
+        self.root.after(500, lambda: self.root.attributes("-topmost", False))
 
     def _bind_keys(self):
         self.root.bind("<Escape>", lambda e: self.hide())
@@ -366,10 +381,7 @@ class MistralApp:
 
     def show(self):
         self.visible = True
-        self.root.deiconify()
-        self.root.attributes("-topmost", True)
-        self.root.after(200, lambda: self.root.attributes("-topmost", False))
-        self.input_widget.focus_set()
+        self._force_show()
 
     def run(self):
         self.root.mainloop()
