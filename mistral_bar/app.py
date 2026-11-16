@@ -11,7 +11,7 @@ from tkinter import ttk, filedialog, messagebox
 from . import __version__
 from .config import load_config, save_config
 from .markdown import render_markdown
-from .mistral_client import MistralError, chat, extract_reply, extract_tool_calls
+from .mistral_client import MistralError, chat_stream, extract_reply, extract_tool_calls
 from .storage import load_conversations, new_conversation, save_conversations
 from .tools import TOOL_DEFS, directory_tree, execute_tool_call
 
@@ -50,6 +50,7 @@ class MistralApp:
         self.current_id = None
         self.events = queue.Queue()
         self.busy = False
+        self.streaming = {}
 
         self.root = tk.Tk()
         self.root.title("Mistral")
@@ -225,6 +226,10 @@ class MistralApp:
                 elif m["role"] == "assistant":
                     t.insert("end", "\nMistral\n", ("ai_label",))
                     render_markdown(t, m["content"])
+        streaming_text = self.streaming.get(self.current_id, "") if self.current else ""
+        if streaming_text:
+            t.insert("end", "\nMistral\n", ("ai_label",))
+            render_markdown(t, streaming_text)
         t.tag_configure("muted", foreground=COLORS["muted"])
         t.configure(state="disabled")
         t.see("end")
@@ -255,12 +260,15 @@ class MistralApp:
 
     def _run_query(self, conv_id, query):
         try:
-            answer = self._agent_loop(conv_id, query)
+            answer = self._agent_loop(
+                conv_id, query,
+                on_delta=lambda piece: self.events.put(("delta", conv_id, piece)),
+            )
             self.events.put(("answer", conv_id, answer))
         except MistralError as e:
             self.events.put(("error", conv_id, str(e)))
 
-    def _agent_loop(self, conv_id, query):
+    def _agent_loop(self, conv_id, query, on_delta=None):
         conv = next((c for c in self.conversations if c["id"] == conv_id), None)
         if not conv:
             return "(conversation missing)"
@@ -276,8 +284,8 @@ class MistralApp:
             {"role": "user", "content": query}
         ]
         for _ in range(self.cfg["max_tool_iterations"]):
-            response = chat(self.cfg["api_key"], self.cfg["model"], messages, tools)
-            message = response["choices"][0]["message"]
+            message = chat_stream(self.cfg["api_key"], self.cfg["model"], messages,
+                                  tools, on_delta=on_delta)
             tool_calls = extract_tool_calls(message)
             if not tool_calls:
                 return extract_reply(message) or "(empty response)"
@@ -299,11 +307,17 @@ class MistralApp:
                 conv = next((c for c in self.conversations if c["id"] == conv_id), None)
                 if not conv:
                     continue
+                if kind == "delta":
+                    self.streaming[conv_id] = self.streaming.get(conv_id, "") + payload
+                    if self.current_id == conv_id:
+                        self._render_chat()
+                    continue
                 if kind == "answer":
                     conv["messages"].append({"role": "assistant", "content": payload})
                 elif kind == "error":
                     conv["messages"].append(
                         {"role": "assistant", "content": f"⚠️ {payload}"})
+                self.streaming.pop(conv_id, None)
                 save_conversations(self.conversations)
                 self.busy = False
                 if self.current_id == conv_id:
